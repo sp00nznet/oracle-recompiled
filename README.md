@@ -18,12 +18,15 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 
 ## Screenshots
 
-| Oracle of Ages — first frame from the recompiled binary |
-|:---:|
-| ![Ages boot logo](screenshots/ages_boot.png) |
-| *160×144 PPM dump from `oracle_of_ages.exe --dump-frames 90`, converted to PNG.*<br/>*That's the Capcom Flagship boot logo, rendered by our recompiled SM83 CPU through our recompiled PPU.* |
+| Oracle of Ages | Oracle of Seasons |
+|:---:|:---:|
+| ![Ages boot logo](screenshots/ages_boot.png) | ![Seasons boot logo](screenshots/seasons_boot.png) |
+| *frame 90 — Capcom Flagship logo* | *frame 90 — Capcom Flagship logo* |
 
-*More once the boot sequence advances past the publisher logos — see Known Issues.*
+Both 160×144 PPM dumps from `--dump-frames 90`, converted to PNG. The two PNGs
+hash byte-identical — both Oracles render the same shared boot bitmap, which
+is itself a useful integration test. *More screenshots once the boot sequence
+advances past the publisher logos — see Known Issues.*
 
 ## Status
 
@@ -33,9 +36,9 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 | Project scaffolded                   |  ✅  |   ✅    |
 | Recompiler bootstrapped (`gbrecomp`) |  ✅  |   ✅    |
 | Recompiled to C (~3M lines each)     |  ✅  |   ✅    |
-| First successful native build        |  ✅  |   🛠️    |
-| SDL window opens, framebuffer renders|  ✅  |   ⏳    |
-| Cartridge header recognized          |  ✅  |   ⏳    |
+| First successful native build        |  ✅  |   ✅    |
+| SDL window opens, framebuffer renders|  ✅  |   ✅    |
+| Cartridge header recognized          |  ✅  |   ✅    |
 | Boots past publisher logos           |  ⏳  |   ⏳    |
 | Reaches title screen                 |  ⏳  |   ⏳    |
 | Reaches first dungeon                |  ⏳  |   ⏳    |
@@ -44,25 +47,30 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 | Audio (4 channels, 44.1 kHz)         |  ⏳  |   ⏳    |
 | Full playthrough                     |  ⏳  |   ⏳    |
 
-> ⚙️ **Update — Ages renders its first frame.** `gbrecomp` translated both ROMs
-> to native C on the first try (~86–89 MB of generated `.c` each, ~13.5k
-> functions, ~92k basic blocks). After three CMakeLists tweaks (path,
-> missing runtime sources, `LA_HAS_IMGUI`), `oracle_of_ages.exe` is 21.7 MB,
-> boots its SDL2 window at 3× scale with 44.1 kHz / 2-channel audio,
-> recognizes the cartridge (`ZELDA NAYRUAZ8E`), allocates 8 KB of SRAM,
-> hits CGB double-speed, and renders the Capcom Flagship boot logo from a
-> real framebuffer dump (see Screenshots). It then stalls on the logo —
-> the boot sequence doesn't advance to the title screen yet. **First known
-> bug to chase** — see Known Issues.
+> ⚙️ **Update — both games render their first frame.** `gbrecomp` translated
+> both ROMs to native C on the first try (~86–89 MB of generated `.c` each,
+> ~13.5k functions, ~92k basic blocks). After three CMakeLists tweaks
+> (path, missing runtime sources, `LA_HAS_IMGUI`), `oracle_of_ages.exe`
+> (21.7 MB) and `oracle_of_seasons.exe` (22.0 MB) both boot their SDL2
+> window at 3× scale with 44.1 kHz / 2-channel audio, recognize their
+> cartridges (`ZELDA NAYRUAZ8E` / `ZELDA DIN`), allocate 8 KB of SRAM,
+> hit CGB double-speed, and render the Capcom Flagship boot logo from a
+> real framebuffer dump. Both then stall on the logo — the boot sequence
+> doesn't advance to the title screen yet. **First known bug to chase** —
+> see Known Issues.
 
 ## Known Issues
 
-- **Ages boot-logo stall.** After the publisher logos render, the boot
-  sequence doesn't advance. Frame hash is identical at frames 240, 360,
-  480, 600. Likely candidates: a missing/wrong interrupt source, an
-  indirect-jump that fell back to the interpreter and never returned,
-  or a timing-sensitive wait loop reading IO. Next step: capture a
-  `--hw-trace` and diff against SameBoy for the first ~1000 scanlines.
+- **Boot-logo stall (both games).** After the publisher logos render, the
+  boot sequence doesn't advance. Frame hash is identical at frames 90,
+  300, and 600 for both Ages (`ZELDA NAYRUAZ8E`) and Seasons (`ZELDA DIN`),
+  and the two games render *exactly* the same boot bitmap (the PNGs match
+  byte-for-byte). That's a useful clue — the bug is almost certainly in
+  shared Capcom Flagship boot code, not in anything game-specific.
+  Candidates: a missing/wrong interrupt source, an indirect-jump that
+  fell back to the interpreter and stalled, or a timing-sensitive wait
+  loop reading IO. Next step: capture `--hw-trace` and diff against
+  SameBoy for the first ~1000 scanlines.
 
 *Updated as the work progresses — this section is the source of truth.*
 
