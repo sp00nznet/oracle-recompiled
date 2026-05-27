@@ -18,11 +18,12 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 
 ## Screenshots
 
-*(coming once the first build boots — placeholder)*
+| Oracle of Ages — first frame from the recompiled binary |
+|:---:|
+| ![Ages boot logo](screenshots/ages_boot.png) |
+| *160×144 PPM dump from `oracle_of_ages.exe --dump-frames 90`, converted to PNG.*<br/>*That's the Capcom Flagship boot logo, rendered by our recompiled SM83 CPU through our recompiled PPU.* |
 
-| Oracle of Ages | Oracle of Seasons |
-|----------------|-------------------|
-| *Nayru sings…* | *Din dances…* |
+*More once the boot sequence advances past the publisher logos — see Known Issues.*
 
 ## Status
 
@@ -32,20 +33,36 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 | Project scaffolded                   |  ✅  |   ✅    |
 | Recompiler bootstrapped (`gbrecomp`) |  ✅  |   ✅    |
 | Recompiled to C (~3M lines each)     |  ✅  |   ✅    |
-| First successful native build        |  ✅  |   ⏳    |
-| Boots past title screen              |  ⏳  |   ⏳    |
+| First successful native build        |  ✅  |   🛠️    |
+| SDL window opens, framebuffer renders|  ✅  |   ⏳    |
+| Cartridge header recognized          |  ✅  |   ⏳    |
+| Boots past publisher logos           |  ⏳  |   ⏳    |
+| Reaches title screen                 |  ⏳  |   ⏳    |
 | Reaches first dungeon                |  ⏳  |   ⏳    |
 | Save / load to SRAM                  |  ⏳  |   ⏳    |
 | Linked-game passwords verified       |  ⏳  |   ⏳    |
 | Audio (4 channels, 44.1 kHz)         |  ⏳  |   ⏳    |
 | Full playthrough                     |  ⏳  |   ⏳    |
 
-> ⚙️ **Update — first native build green.** `gbrecomp` translated both ROMs to
-> native C on the first try (Ages: ~86 MB / Seasons: ~89 MB of generated `.c`),
-> recovering ~13.5k functions and ~92k basic blocks per game. A handful of
-> indirect-jump sites fall back to the interpreter, which is expected.
-> **`oracle_of_ages.exe` now builds clean** (21 MB executable). SDL window
-> opens; full title-screen smoke test pending manual verification.
+> ⚙️ **Update — Ages renders its first frame.** `gbrecomp` translated both ROMs
+> to native C on the first try (~86–89 MB of generated `.c` each, ~13.5k
+> functions, ~92k basic blocks). After three CMakeLists tweaks (path,
+> missing runtime sources, `LA_HAS_IMGUI`), `oracle_of_ages.exe` is 21.7 MB,
+> boots its SDL2 window at 3× scale with 44.1 kHz / 2-channel audio,
+> recognizes the cartridge (`ZELDA NAYRUAZ8E`), allocates 8 KB of SRAM,
+> hits CGB double-speed, and renders the Capcom Flagship boot logo from a
+> real framebuffer dump (see Screenshots). It then stalls on the logo —
+> the boot sequence doesn't advance to the title screen yet. **First known
+> bug to chase** — see Known Issues.
+
+## Known Issues
+
+- **Ages boot-logo stall.** After the publisher logos render, the boot
+  sequence doesn't advance. Frame hash is identical at frames 240, 360,
+  480, 600. Likely candidates: a missing/wrong interrupt source, an
+  indirect-jump that fell back to the interpreter and never returned,
+  or a timing-sensitive wait loop reading IO. Next step: capture a
+  `--hw-trace` and diff against SameBoy for the first ~1000 scanlines.
 
 *Updated as the work progresses — this section is the source of truth.*
 

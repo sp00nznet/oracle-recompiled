@@ -47,7 +47,7 @@ target_include_directories(gbrt PUBLIC
     ${GBRT_DIR}/src
 )
 target_link_libraries(gbrt PUBLIC SDL2::SDL2)
-target_compile_definitions(gbrt PUBLIC GB_HAS_SDL2)
+target_compile_definitions(gbrt PUBLIC GB_HAS_SDL2 LA_HAS_IMGUI)
 
 # Main executable
 add_executable(oracle_of_ages
