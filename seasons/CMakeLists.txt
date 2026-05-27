@@ -25,7 +25,10 @@ add_library(gbrt STATIC
     ${GBRT_DIR}/src/ppu.c
     ${GBRT_DIR}/src/audio.c
     ${GBRT_DIR}/src/interpreter.c
+    ${GBRT_DIR}/src/hwtrace.c
     ${GBRT_DIR}/src/platform_sdl.cpp
+    ${GBRT_DIR}/src/menu_gui.cpp
+    ${GBRT_DIR}/src/asset_viewer.cpp
 )
 
 # ImGui sources
@@ -38,9 +41,10 @@ target_sources(gbrt PRIVATE
     ${GBRT_DIR}/third_party/imgui/backends/imgui_impl_sdl2.cpp
     ${GBRT_DIR}/third_party/imgui/backends/imgui_impl_sdlrenderer2.cpp
 )
-target_include_directories(gbrt PUBLIC 
+target_include_directories(gbrt PUBLIC
     ${GBRT_DIR}/include
     ${GBRT_DIR}/third_party/imgui
+    ${GBRT_DIR}/src
 )
 target_link_libraries(gbrt PUBLIC SDL2::SDL2)
 target_compile_definitions(gbrt PUBLIC GB_HAS_SDL2)

@@ -32,7 +32,7 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 | Project scaffolded                   |  ✅  |   ✅    |
 | Recompiler bootstrapped (`gbrecomp`) |  ✅  |   ✅    |
 | Recompiled to C (~3M lines each)     |  ✅  |   ✅    |
-| First successful native build        |  🛠️  |   ⏳    |
+| First successful native build        |  ✅  |   ⏳    |
 | Boots past title screen              |  ⏳  |   ⏳    |
 | Reaches first dungeon                |  ⏳  |   ⏳    |
 | Save / load to SRAM                  |  ⏳  |   ⏳    |
@@ -40,11 +40,12 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 | Audio (4 channels, 44.1 kHz)         |  ⏳  |   ⏳    |
 | Full playthrough                     |  ⏳  |   ⏳    |
 
-> ⚙️ **Update — initial recompile complete.** `gbrecomp` translated both ROMs to
+> ⚙️ **Update — first native build green.** `gbrecomp` translated both ROMs to
 > native C on the first try (Ages: ~86 MB / Seasons: ~89 MB of generated `.c`),
 > recovering ~13.5k functions and ~92k basic blocks per game. A handful of
-> indirect-jump sites fall back to the interpreter, which is expected. First
-> Ages native build is compiling now.
+> indirect-jump sites fall back to the interpreter, which is expected.
+> **`oracle_of_ages.exe` now builds clean** (21 MB executable). SDL window
+> opens; full title-screen smoke test pending manual verification.
 
 *Updated as the work progresses — this section is the source of truth.*
 
@@ -128,14 +129,28 @@ monorepo layout) is committed via a tracked override in this README's "Layout
 caveat" below.
 
 > **Layout caveat.** The recompiler auto-generates a `CMakeLists.txt` per
-> game that assumes the output directory lives at `gbrecomp/<game>/`, so
-> `GBRT_DIR` points to `../../runtime`. Our monorepo puts the game dirs at
-> the project root, so after each regeneration you need to retarget the
-> runtime path:
+> game that's correct in shape but needs two tweaks for this layout, both
+> already applied in the committed CMakeLists files (so a regeneration
+> from a clean ROM checkout will overwrite them — re-apply if you do):
 >
-> ```bash
-> sed -i 's|../../runtime|../gbrecomp/runtime|' ages/CMakeLists.txt seasons/CMakeLists.txt
-> ```
+> 1. **Runtime path** — auto-gen assumes the output sits at
+>    `gbrecomp/<game>/`, so `GBRT_DIR` points to `../../runtime`. We need
+>    `../gbrecomp/runtime`:
+>    ```bash
+>    sed -i 's|../../runtime|../gbrecomp/runtime|' \
+>      ages/CMakeLists.txt seasons/CMakeLists.txt
+>    ```
+> 2. **Missing runtime sources** — `platform_sdl.cpp` in the runtime calls
+>    into `menu_gui_*`, `asset_viewer_*`, and `hwtrace_*`, but auto-gen
+>    only adds `gbrt.c`, `ppu.c`, `audio.c`, `interpreter.c`, and
+>    `platform_sdl.cpp`. Without the other three you get undefined-symbol
+>    link errors. Add to the `add_library(gbrt STATIC ...)` block:
+>    ```
+>    ${GBRT_DIR}/src/hwtrace.c
+>    ${GBRT_DIR}/src/menu_gui.cpp
+>    ${GBRT_DIR}/src/asset_viewer.cpp
+>    ```
+>    and add `${GBRT_DIR}/src` to `target_include_directories`.
 
 ### Build
 
