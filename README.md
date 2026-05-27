@@ -30,9 +30,9 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 |--------------------------------------|:----:|:-------:|
 | ROM acquired (your own copy, gitignored) | ✅ | ✅ |
 | Project scaffolded                   |  ✅  |   ✅    |
-| Recompiler bootstrapped (`gbrecomp`) |  ⏳  |   ⏳    |
-| `rom.c` / `rom_rom.c` generated      |  ⏳  |   ⏳    |
-| First successful native build        |  ⏳  |   ⏳    |
+| Recompiler bootstrapped (`gbrecomp`) |  ✅  |   ✅    |
+| Recompiled to C (~3M lines each)     |  ✅  |   ✅    |
+| First successful native build        |  🛠️  |   ⏳    |
 | Boots past title screen              |  ⏳  |   ⏳    |
 | Reaches first dungeon                |  ⏳  |   ⏳    |
 | Save / load to SRAM                  |  ⏳  |   ⏳    |
@@ -40,12 +40,20 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 | Audio (4 channels, 44.1 kHz)         |  ⏳  |   ⏳    |
 | Full playthrough                     |  ⏳  |   ⏳    |
 
+> ⚙️ **Update — initial recompile complete.** `gbrecomp` translated both ROMs to
+> native C on the first try (Ages: ~86 MB / Seasons: ~89 MB of generated `.c`),
+> recovering ~13.5k functions and ~92k basic blocks per game. A handful of
+> indirect-jump sites fall back to the interpreter, which is expected. First
+> Ages native build is compiling now.
+
 *Updated as the work progresses — this section is the source of truth.*
 
 ## How It Works
 
-This repo holds two thin game-specific wrappers (`rom_main.c` + `CMakeLists.txt`)
-that share a single recompiler runtime via the `gbrecomp/` submodule.
+This repo holds two thin game-specific wrappers (one `CMakeLists.txt` per game)
+that share a single recompiler runtime via the `gbrecomp/` submodule. The
+recompiler emits `oracle_of_<game>.{c,h}`, `_rom.c` (ROM bytes as a C array),
+and `_main.c` (entrypoint) into each game's directory.
 
 ```
                         your own ROMs (never committed)
@@ -57,7 +65,7 @@ that share a single recompiler runtime via the `gbrecomp/` submodule.
               │   SM83 → C translation, ROM-as-array, headers        │
               └──────────────────────────────────────────────────────┘
                               │                              │
-                ages/rom.{c,h} + ages/rom_rom.c   seasons/rom.{c,h} + seasons/rom_rom.c
+         ages/oracle_of_ages.{c,h,_main.c,_rom.c}   seasons/oracle_of_seasons.{c,h,_main.c,_rom.c}
                               │                              │
                               ▼                              ▼
               ┌────────────────────────┐    ┌────────────────────────┐
@@ -102,15 +110,32 @@ See the [gb-recompiled README](https://github.com/sp00nznet/gb-recompiled) for t
 exact recompiler invocation. Drop your ROMs into `roms/` and point the tool at them:
 
 ```bash
+# First, build the recompiler tool itself (only needed once)
+cd gbrecomp && mkdir -p build && cd build && cmake -G Ninja .. && ninja && cd ../..
+
 # Oracle of Ages
-./gbrecomp/build/bin/gbrecomp roms/oracle-of-ages.gbc -o ages/
+./gbrecomp/build/bin/gbrecomp.exe roms/oracle-of-ages.gbc -o ages/
 
 # Oracle of Seasons
-./gbrecomp/build/bin/gbrecomp roms/oracle-of-seasons.gbc -o seasons/
+./gbrecomp/build/bin/gbrecomp.exe roms/oracle-of-seasons.gbc -o seasons/
 ```
 
-This produces `rom.c` (~100 MB), `rom_rom.c` (~6 MB ROM bytes as a C array), and
-`rom.h` inside each game's directory. All three are gitignored.
+This produces, per game, `oracle_of_<game>.c` (~85 MB), `oracle_of_<game>_rom.c`
+(~6 MB ROM bytes as a C array), `oracle_of_<game>.h`, `oracle_of_<game>_main.c`,
+and a fresh `CMakeLists.txt`. **All five are gitignored** — only the
+hand-curated `CMakeLists.txt` patch (one line, fixes the runtime path for our
+monorepo layout) is committed via a tracked override in this README's "Layout
+caveat" below.
+
+> **Layout caveat.** The recompiler auto-generates a `CMakeLists.txt` per
+> game that assumes the output directory lives at `gbrecomp/<game>/`, so
+> `GBRT_DIR` points to `../../runtime`. Our monorepo puts the game dirs at
+> the project root, so after each regeneration you need to retarget the
+> runtime path:
+>
+> ```bash
+> sed -i 's|../../runtime|../gbrecomp/runtime|' ages/CMakeLists.txt seasons/CMakeLists.txt
+> ```
 
 ### Build
 
@@ -118,11 +143,13 @@ This produces `rom.c` (~100 MB), `rom_rom.c` (~6 MB ROM bytes as a C array), and
 PATH="/c/msys64/mingw64/bin:$PATH"
 
 # Ages
-cmake -S ages -B ages/build -G Ninja && cmake --build ages/build
+cmake -S ages -B ages/build -G Ninja
+cmake --build ages/build           # ~3M lines of C → expect a long compile
 ./ages/build/oracle_of_ages.exe
 
 # Seasons
-cmake -S seasons -B seasons/build -G Ninja && cmake --build seasons/build
+cmake -S seasons -B seasons/build -G Ninja
+cmake --build seasons/build
 ./seasons/build/oracle_of_seasons.exe
 ```
 
@@ -147,12 +174,12 @@ Both are 1,048,576 bytes (1 MB), MBC5+RAM+BATTERY, CGB-only.
 ├── gbrecomp/                  # shared submodule → sp00nznet/gb-recompiled
 ├── roms/                      # gitignored — drop your own ROMs here
 ├── ages/
-│   ├── CMakeLists.txt
-│   ├── rom_main.c             # ~100-line entrypoint
-│   ├── rom.h                  # generated, gitignored
-│   ├── rom.c                  # generated, gitignored
-│   └── rom_rom.c              # generated, gitignored
-├── seasons/                   # same shape as ages/
+│   ├── CMakeLists.txt              # regenerated by gbrecomp; one-line path fix needed
+│   ├── oracle_of_ages.h            # generated, gitignored
+│   ├── oracle_of_ages.c            # generated, gitignored (~86 MB)
+│   ├── oracle_of_ages_main.c       # generated, gitignored — entrypoint
+│   └── oracle_of_ages_rom.c        # generated, gitignored (~6 MB ROM-as-C-array)
+├── seasons/                        # same shape as ages/, with oracle_of_seasons_*
 │   └── …
 └── screenshots/
 ```

@@ -11,12 +11,15 @@ build-*/
 *.dylib
 
 # Recompiler output — regenerate locally from your own ROMs via gbrecomp/recompiler/
-ages/rom.c
-ages/rom_rom.c
-ages/rom.h
-seasons/rom.c
-seasons/rom_rom.c
-seasons/rom.h
+# (The recompiler derives these names from the ROM filename.)
+ages/oracle_of_ages.c
+ages/oracle_of_ages.h
+ages/oracle_of_ages_rom.c
+ages/oracle_of_ages_main.c
+seasons/oracle_of_seasons.c
+seasons/oracle_of_seasons.h
+seasons/oracle_of_seasons_rom.c
+seasons/oracle_of_seasons_main.c
 
 # ROMs (never commit; supply your own legally obtained copies)
 roms/
