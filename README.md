@@ -20,13 +20,14 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 
 | Oracle of Ages | Oracle of Seasons |
 |:---:|:---:|
+| ![Ages intro](screenshots/ages_intro.png) | ![Seasons intro](screenshots/seasons_intro.png) |
+| *intro cinematic — the castle at sunset* | *intro cinematic — Link rides out* |
 | ![Ages boot logo](screenshots/ages_boot.png) | ![Seasons boot logo](screenshots/seasons_boot.png) |
-| *frame 90 — Capcom Flagship logo* | *frame 90 — Capcom Flagship logo* |
+| *boot — Capcom Flagship logo* | *boot — Capcom Flagship logo* |
 
-Both 160×144 PPM dumps from `--dump-frames 90`, converted to PNG. The two PNGs
-hash byte-identical — both Oracles render the same shared boot bitmap, which
-is itself a useful integration test. *More screenshots once the boot sequence
-advances past the publisher logos — see Known Issues.*
+All 160×144 framebuffer dumps from the recompiled binaries (`--dump-frames`),
+converted to PNG. Both games now boot through the publisher logos and play
+their opening cinematics — see the "Boot stall, solved" note below.
 
 ## Status
 
@@ -39,38 +40,68 @@ advances past the publisher logos — see Known Issues.*
 | First successful native build        |  ✅  |   ✅    |
 | SDL window opens, framebuffer renders|  ✅  |   ✅    |
 | Cartridge header recognized          |  ✅  |   ✅    |
-| Boots past publisher logos           |  ⏳  |   ⏳    |
-| Reaches title screen                 |  ⏳  |   ⏳    |
+| Boots past publisher logos           |  ✅  |   ✅    |
+| Plays opening cinematic              |  ✅  |   ✅    |
+| Reaches title screen                 |  🛠️  |   🛠️    |
 | Reaches first dungeon                |  ⏳  |   ⏳    |
 | Save / load to SRAM                  |  ⏳  |   ⏳    |
 | Linked-game passwords verified       |  ⏳  |   ⏳    |
 | Audio (4 channels, 44.1 kHz)         |  ⏳  |   ⏳    |
 | Full playthrough                     |  ⏳  |   ⏳    |
 
-> ⚙️ **Update — both games render their first frame.** `gbrecomp` translated
+> ⚙️ **Update — both games boot and play their intros!** `gbrecomp` translated
 > both ROMs to native C on the first try (~86–89 MB of generated `.c` each,
 > ~13.5k functions, ~92k basic blocks). After three CMakeLists tweaks
-> (path, missing runtime sources, `LA_HAS_IMGUI`), `oracle_of_ages.exe`
-> (21.7 MB) and `oracle_of_seasons.exe` (22.0 MB) both boot their SDL2
-> window at 3× scale with 44.1 kHz / 2-channel audio, recognize their
-> cartridges (`ZELDA NAYRUAZ8E` / `ZELDA DIN`), allocate 8 KB of SRAM,
-> hit CGB double-speed, and render the Capcom Flagship boot logo from a
-> real framebuffer dump. Both then stall on the logo — the boot sequence
-> doesn't advance to the title screen yet. **First known bug to chase** —
-> see Known Issues.
+> (path, missing runtime sources, `LA_HAS_IMGUI`) and **one real runtime bug
+> fix** (serial-port emulation — see below), `oracle_of_ages.exe` (21.7 MB)
+> and `oracle_of_seasons.exe` (22.0 MB) now boot through the Nintendo /
+> Capcom logos and play their opening cinematics: the castle at sunset
+> (Ages) and Link riding out (Seasons), both in full GBC color with
+> 44.1 kHz audio.
+
+## Solved: the boot-logo stall
+
+The first real bug, and a fun one to track down. Both games booted, rendered
+the Capcom Flagship logo from a genuine framebuffer, ran every interrupt
+handler correctly… and then froze on the logo forever. Here's the trail:
+
+1. **The logo→title transition is gated by a countdown.** A 16-bit timer in
+   WRAM (`$cbb3`) is decremented once per frame; when it hits zero the boot
+   state machine advances (`$c2e7`: 1→2) and sets flag `$ffb9`, kicking off
+   the intro. In a reference emulator (PyBoy) the timer initializes to
+   `0x00D0` and cleanly counts to zero around frame 300.
+
+2. **Our timer never reached zero.** Instrumenting the runtime showed the
+   timer's *high* byte was `0x09` instead of `0x00`, so it would have taken
+   ~2500 frames — and it got reloaded before then anyway. The init code at
+   `3:4d56` correctly wrote `0x00D0`, but a single instruction at `3:4cd3`
+   (`LD ($cbb4),$09`) kept clobbering the high byte right back.
+
+3. **That clobber is gated by `$ffba`.** The game only runs the clobber when
+   `$ffba != 0`. In PyBoy `$ffba` stays `0`; in our build it was non-zero.
+
+4. **`$ffba` is the serial link-cable handshake byte.** The boot code probes
+   the Game Link port: it sends `0xe1`/`0xe0` and, if it *reads the same
+   bytes back*, concludes a second Game Boy is connected and enters link
+   mode — which is what corrupted the logo timer.
+
+5. **The runtime's serial emulation was the culprit.** On a write to `FF02`
+   with the transfer-start bit set, the fallback handler raised the serial
+   interrupt but never updated `FF01` — so the game read back *the very byte
+   it had just sent* and mistook the open bus for a real peer. On actual
+   hardware with no link cable, an internal-clock transfer clocks in `0xFF`
+   from the floating data line.
+
+**The fix** (`gbrecomp/runtime/src/gbrt.c`): on an internal-clock serial
+transfer with no peer, set `FF01 = 0xFF`, raise the interrupt, and clear the
+start bit; leave external-clock transfers pending (no peer, no clock). One
+clean write of `0xFF` and both Oracles sail past the logo into their intros.
 
 ## Known Issues
 
-- **Boot-logo stall (both games).** After the publisher logos render, the
-  boot sequence doesn't advance. Frame hash is identical at frames 90,
-  300, and 600 for both Ages (`ZELDA NAYRUAZ8E`) and Seasons (`ZELDA DIN`),
-  and the two games render *exactly* the same boot bitmap (the PNGs match
-  byte-for-byte). That's a useful clue — the bug is almost certainly in
-  shared Capcom Flagship boot code, not in anything game-specific.
-  Candidates: a missing/wrong interrupt source, an indirect-jump that
-  fell back to the interpreter and stalled, or a timing-sensitive wait
-  loop reading IO. Next step: capture `--hw-trace` and diff against
-  SameBoy for the first ~1000 scanlines.
+- **Title-screen / gameplay not yet verified.** The intro cinematics play;
+  full progression to the file-select screen, gameplay, and the linked-game
+  password system still needs testing.
 
 *Updated as the work progresses — this section is the source of truth.*
 
