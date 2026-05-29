@@ -32,6 +32,12 @@ converted to PNG. **Both games now reach interactive overworld gameplay** —
 boot, intro cinematic, title, file select, name entry, opening cutscene, and
 Link walking around with a live HUD (hearts, rupees, item slots).
 
+> These are taken straight from the PPU framebuffer, so they show the full,
+> unobstructed image. In the live SDL window the ImGui menu bar is drawn on
+> top of the game (the image is stretched to fill the window), so it overlaps
+> the top HUD row — the screenshots are a touch cleaner than what you see
+> while playing.
+
 ## Status
 
 | Stage                                | Ages | Seasons |
@@ -315,7 +321,13 @@ This is a personal preservation and education project. Don't redistribute ROMs.
   [arcanite24/gb-recompiled](https://github.com/arcanite24/gb-recompiled)
   with CGB fixes, runtime extensions, and SDL2 frontend in
   [sp00nznet/gb-recompiled](https://github.com/sp00nznet/gb-recompiled)
-- **Reference emulator** — [SameBoy](https://github.com/LIJI32/SameBoy) by LIJI32
+- **Reference emulators** — two, with different jobs:
+  [PyBoy](https://github.com/Baekalfen/PyBoy) is the *scriptable* oracle used
+  for debugging here (its `tools/` ground-truth tracer feeds the recompiler,
+  and `pyboy.memory[addr]` per-frame probing pinned the serial bug — see
+  "Solved" above); [SameBoy](https://github.com/LIJI32/SameBoy) by LIJI32 is
+  the *accuracy* reference that the runtime's `--hw-trace` mode diffs against
+  scanline-by-scanline.
 - **Frontend** — [Dear ImGui](https://github.com/ocornut/imgui) + [SDL2](https://www.libsdl.org/)
 - **Disassembly references** (for triage only, not build inputs) —
   [oracles-disasm](https://github.com/stewmath/oracles-disasm) by stewmath et al.
