@@ -20,14 +20,17 @@ same treatment here: one monorepo, two binaries, one shared runtime.
 
 | Oracle of Ages | Oracle of Seasons |
 |:---:|:---:|
+| ![Ages gameplay](screenshots/ages_gameplay.png) | ![Seasons gameplay](screenshots/seasons_gameplay.png) |
+| *overworld — the forest of Labrynna* | *overworld — Holodrum, near Horon Village* |
 | ![Ages intro](screenshots/ages_intro.png) | ![Seasons intro](screenshots/seasons_intro.png) |
 | *intro cinematic — the castle at sunset* | *intro cinematic — Link rides out* |
 | ![Ages boot logo](screenshots/ages_boot.png) | ![Seasons boot logo](screenshots/seasons_boot.png) |
 | *boot — Capcom Flagship logo* | *boot — Capcom Flagship logo* |
 
 All 160×144 framebuffer dumps from the recompiled binaries (`--dump-frames`),
-converted to PNG. Both games now boot through the publisher logos and play
-their opening cinematics — see the "Boot stall, solved" note below.
+converted to PNG. **Both games now reach interactive overworld gameplay** —
+boot, intro cinematic, title, file select, name entry, opening cutscene, and
+Link walking around with a live HUD (hearts, rupees, item slots).
 
 ## Status
 
@@ -42,22 +45,28 @@ their opening cinematics — see the "Boot stall, solved" note below.
 | Cartridge header recognized          |  ✅  |   ✅    |
 | Boots past publisher logos           |  ✅  |   ✅    |
 | Plays opening cinematic              |  ✅  |   ✅    |
-| Reaches title screen                 |  🛠️  |   🛠️    |
+| Title → file select → name entry     |  ✅  |   ✅    |
+| Reaches overworld gameplay           |  ✅  |   ✅    |
+| Link responds to the controller      |  ✅  |   ✅    |
+| Writes save data to SRAM             |  ✅  |   ✅    |
 | Reaches first dungeon                |  ⏳  |   ⏳    |
-| Save / load to SRAM                  |  ⏳  |   ⏳    |
+| Load existing save (Continue)        |  ⏳  |   ⏳    |
 | Linked-game passwords verified       |  ⏳  |   ⏳    |
-| Audio (4 channels, 44.1 kHz)         |  ⏳  |   ⏳    |
+| Audio sounds correct (4ch, 44.1 kHz) |  🛠️  |   🛠️    |
 | Full playthrough                     |  ⏳  |   ⏳    |
 
-> ⚙️ **Update — both games boot and play their intros!** `gbrecomp` translated
-> both ROMs to native C on the first try (~86–89 MB of generated `.c` each,
-> ~13.5k functions, ~92k basic blocks). After three CMakeLists tweaks
-> (path, missing runtime sources, `LA_HAS_IMGUI`) and **one real runtime bug
-> fix** (serial-port emulation — see below), `oracle_of_ages.exe` (21.7 MB)
-> and `oracle_of_seasons.exe` (22.0 MB) now boot through the Nintendo /
-> Capcom logos and play their opening cinematics: the castle at sunset
-> (Ages) and Link riding out (Seasons), both in full GBC color with
-> 44.1 kHz audio.
+> ⚙️ **Update — both games are playable into the overworld!** `gbrecomp`
+> translated both ROMs to native C on the first try (~86–89 MB of generated
+> `.c` each, ~13.5k functions, ~92k basic blocks). After three CMakeLists
+> tweaks (path, missing runtime sources, `LA_HAS_IMGUI`) and **one real
+> runtime bug fix** (serial-port emulation — see "Solved" below),
+> `oracle_of_ages.exe` (21.7 MB) and `oracle_of_seasons.exe` (22.0 MB) now go
+> all the way from the Nintendo/Capcom logos through the opening cinematic,
+> title screen, file select, name entry, and the new-game intro into **live
+> overworld gameplay** — Link walking around Labrynna / Holodrum with a
+> working HUD (hearts, rupees, item slots), responding to the D-pad, and the
+> game writing its save to SRAM. Driven headlessly via the `--input` script
+> flag (`frame:buttons:duration`) and captured with `--dump-frames`.
 
 ## Solved: the boot-logo stall
 
@@ -109,11 +118,23 @@ failure modes, and both Oracles sail past the logo into their intros.
 > high byte; a PyBoy reference script (`pyboy.memory[...]` per frame) pinned
 > the exact divergence — `$cbb3`, then `$ffba`, then the serial register.
 
-## Known Issues
+## Known Issues / What's next
 
-- **Title-screen / gameplay not yet verified.** The intro cinematics play;
-  full progression to the file-select screen, gameplay, and the linked-game
-  password system still needs testing.
+- **Audio not yet validated by ear.** The 4-channel APU is wired up and the
+  44.1 kHz stream runs, but nobody's confirmed the music/SFX actually sound
+  correct (right notes, no glitches). Needs a listening pass.
+- **Load-existing-save (Continue) untested.** New-game works and saves to
+  SRAM; loading a save back through the file-select "Continue" path hasn't
+  been exercised yet.
+- **Deep gameplay unproven.** Verified up to walking the opening overworld.
+  Dungeons, items, screen transitions, and a longer playthrough are next.
+- **Linked-game password system.** The headline feature of the pair — still
+  to be verified end-to-end across the two builds.
+- **RAM-resident code runs via the interpreter fallback.** Both games copy a
+  small bank-switch trampoline into WRAM and execute it there; the recompiler
+  can't see RAM at build time, so those few instructions correctly fall back
+  to the interpreter. Working as intended, noted here so the `[INTERP] WRAM
+  exec` log lines aren't mistaken for a bug.
 
 *Updated as the work progresses — this section is the source of truth.*
 
