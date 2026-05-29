@@ -318,13 +318,20 @@ and possibly the most fun this project will produce.
 
 ## Legal
 
-This repository contains **zero copyrighted Nintendo or Capcom material**.
+This repository ships **no ROM, no game code, and no game assets** — nothing
+you could rebuild the game from:
 
-- No ROM bytes, no decompiled sources, no assets, no audio, no sprites.
+- No ROM bytes, no decompiled sources, no extracted audio, no ripped sprite or
+  tile sheets.
 - The recompiler's output (`rom.c`, `rom_rom.c`, `rom.h`) is gitignored and
   **must be regenerated locally** from your own legally obtained ROM.
 - Everything checked in is original glue code (MIT) or a pointer to a public
   upstream (the `gbrecomp` submodule).
+
+The only Nintendo/Capcom-owned content here is a handful of small
+**screenshots** in `screenshots/` — captured framebuffer frames used to show
+progress. They remain © Nintendo / Capcom, are included for identification and
+commentary (fair use), and are not game assets you could rebuild the game from.
 
 This is a personal preservation and education project. Don't redistribute ROMs.
 
