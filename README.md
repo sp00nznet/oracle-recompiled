@@ -92,10 +92,22 @@ handler correctly… and then froze on the logo forever. Here's the trail:
    hardware with no link cable, an internal-clock transfer clocks in `0xFF`
    from the floating data line.
 
-**The fix** (`gbrecomp/runtime/src/gbrt.c`): on an internal-clock serial
-transfer with no peer, set `FF01 = 0xFF`, raise the interrupt, and clear the
-start bit; leave external-clock transfers pending (no peer, no clock). One
-clean write of `0xFF` and both Oracles sail past the logo into their intros.
+**The fix** (`gbrecomp/runtime/src/gbrt.c`, upstreamed to
+[gb-recompiled](https://github.com/sp00nznet/gb-recompiled)). The runtime's
+serial fallback now mirrors a disconnected link cable: an **internal-clock
+(master)** transfer clocks in `0xFF`, raises the IRQ, and clears the start
+bit; an **external-clock (slave)** transfer is left **pending** — with no peer
+to supply the clock it never completes on hardware. That second half matters:
+an interim version auto-completed slave transfers too, which (against the
+runtime's newer `serial_exchange` path) flooded the games with spurious serial
+interrupts and drove their stack down into VRAM — trading the clean logo
+freeze for an outright crash. Leaving slave transfers pending fixes both
+failure modes, and both Oracles sail past the logo into their intros.
+
+> 🔎 *How it was found:* `--trace-entries` first pointed at the boot wait-loop;
+> targeted `fprintf` probes in the runtime exposed the `$cbb3` counter's bad
+> high byte; a PyBoy reference script (`pyboy.memory[...]` per frame) pinned
+> the exact divergence — `$cbb3`, then `$ffba`, then the serial register.
 
 ## Known Issues
 
