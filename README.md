@@ -179,6 +179,19 @@ APU, SDL2 platform layer, ImGui debug overlay) all lives in
 [**`sp00nznet/gb-recompiled`**](https://github.com/sp00nznet/gb-recompiled) — the
 same runtime that powers the Pokémon Gold / Crystal and Link's Awakening DX recomps.
 
+> **Optional — nicer function names.** By default the recompiler names functions
+> `func_<bank>_<addr>`. If you analyse a ROM in Ghidra (with the GhidraBoy SM83
+> extension), `gbrecomp/tools/ghidra/` will run a headless analysis, export the
+> function/symbol names, and feed them back so the generated C reads e.g.
+> `AdvanceLogoState` instead of `func_03_4d23`:
+> ```bash
+> export GHIDRA_INSTALL_DIR=/path/to/ghidra
+> python gbrecomp/tools/ghidra/run_ghidra.py roms/oracle-of-ages.gbc -o ghidra_out
+> python gbrecomp/tools/ghidra/build_names.py ghidra_out -o ages/names.sym
+> ./gbrecomp/build/bin/gbrecomp.exe roms/oracle-of-ages.gbc -o ages/ --names ages/names.sym
+> ```
+> See `gbrecomp/tools/ghidra/README.md` for details.
+
 ## Building
 
 ### Prerequisites
