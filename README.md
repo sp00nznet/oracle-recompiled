@@ -32,11 +32,12 @@ converted to PNG. **Both games now reach interactive overworld gameplay** —
 boot, intro cinematic, title, file select, name entry, opening cutscene, and
 Link walking around with a live HUD (hearts, rupees, item slots).
 
-> These are taken straight from the PPU framebuffer, so they show the full,
-> unobstructed image. In the live SDL window the ImGui menu bar is drawn on
-> top of the game (the image is stretched to fill the window), so it overlaps
-> the top HUD row — the screenshots are a touch cleaner than what you see
-> while playing.
+> These are taken straight from the PPU framebuffer. In the live SDL window
+> the ImGui menu bar now sits in its own strip *above* an unobstructed game —
+> the window is grown by the bar's height and the game is blitted below it, so
+> the top HUD row (hearts / rupees / items) is fully visible. (Earlier the bar
+> overlaid the stretched game and clipped that row; fixed upstream in
+> gb-recompiled — the game image fills its strip, the bar gets its own.)
 
 ## Status
 
